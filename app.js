@@ -1,3 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Como você tá hoje?</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<script>
 // Utilidades básicas
 function createEl(tag, options = {}) {
     const el = document.createElement(tag);
@@ -49,10 +61,9 @@ injectStyles(`
     .date-today-label { font-size:1.1rem; font-weight:600; color:#1e3a8a; margin-bottom:0.7rem; text-align:center; }
     button { background: linear-gradient(90deg,#7c3aed,#a855f7); color:white; border:none; padding:0.75rem 2rem; font-size:1.1rem;
         font-weight:600; border-radius:50px; cursor:pointer; transition:transform 0.3s, box-shadow 0.3s; margin:1rem 0; }
-    button:hover { transform:translateY(-3px); box-shadow:0 5px 15px rgba(124,58,237,0.3); }
+    button:hover { transform:translateY(-3px); box-shadow:0 5px 15px RGBA(124,58,237,0.3); }
     #totals { font-size:1.1rem; color:#1e3a8a; margin:1.0rem 0 1.5rem 0; font-weight:600; }
     #chartContainer { height:350px; width:100%; margin-top:2rem; background:#f1f5f9; border-radius:15px; padding:1rem; }
-    #exportBtn { display:none; background:#16a34a!important; color:#fff; font-weight:700; }
     @media (max-width:600px) {
         h1 { font-size:1.5rem; }
         .emoji { font-size:2.5rem; }
@@ -217,7 +228,7 @@ function updateChartAndTotals(dateString) {
 function submitResponse() {
     const category = document.getElementById('category').value;
     if(category===''){
-        alert('Obrigatório selecionar se você é Aluno ou Professor antes de enviar.');
+        alert('Obrigatório selecionar se5633 você é Aluno ou Professor antes de enviar.');
         return;
     }
     if(selectedHumor===null){
@@ -237,36 +248,8 @@ function submitResponse() {
     document.getElementById('category').value = '';
 }
 
-// ============= BOTÃO EXPORTAÇÃO: atalho Ctrl + D + S =============
-const exportBtn = createEl('button', {
-    id: "exportBtn",
-    innerHTML: 'Exportar Votos',
-    style: "display:none;background:#16a34a!important;margin: 1rem;"
-});
-exportBtn.onclick = exportVotesFunc;
-container.appendChild(exportBtn);
-
-let ctrlDown = false;
-let dPressed = false;
-window.addEventListener('keydown', function(e){
-    if(e.key === "Control") ctrlDown = true;
-    if(ctrlDown && e.key.toLowerCase() === 'd') {
-        dPressed = true;
-    }
-    if(ctrlDown && dPressed && e.key.toLowerCase() === 's') {
-        exportBtn.style.display = "block";
-        alert("Botão de exportação habilitado!");
-        ctrlDown = false;
-        dPressed = false;
-    }
-});
-window.addEventListener('keyup', function(e){
-    if(e.key === "Control") ctrlDown = false;
-    if(e.key.toLowerCase() === 'd') dPressed = false;
-});
-
-// Função exportação: CSV e resumo por sentimento
-function exportVotesFunc(){
+// Função para gerar e baixar a planilha CSV
+function generateAndDownloadCSV() {
     const data = getStorageData();
     const sentimentoLabels = {
         1: 'Muito Triste',
@@ -277,35 +260,56 @@ function exportVotesFunc(){
     };
 
     let csvRows = ["Data,Tipo,Sentimento,Votos"];
-    let resumo = "";
-
-    for(const dia in data){
-        for(const tipo in data[dia]){
-            let tipoNom = (tipo==="aluno") ? "Aluno" : "Professor";
-            for(const val in data[dia][tipo]){
+    for (const dia in data) {
+        for (const tipo in data[dia]) {
+            let tipoNom = tipo === "aluno" ? "Aluno" : "Professor";
+            for (const val in data[dia][tipo]) {
                 if (data[dia][tipo][val] > 0) {
-                    resumo += `${tipoNom} votou "${sentimentoLabels[val]}" ${data[dia][tipo][val]}x (${formatDateBR(new Date(dia))})\n`;
+                    csvRows.push(`${formatDateBR(new Date(dia))},${tipoNom},${sentimentoLabels[val]},${data[dia][tipo][val]}`);
                 }
-                csvRows.push(`${formatDateBR(new Date(dia))},${tipoNom},${sentimentoLabels[val]},${data[dia][tipo][val]}`);
             }
         }
     }
 
-    if (resumo === "") resumo = "Nenhum voto computado ainda.";
-    alert(resumo);
+    if (csvRows.length === 1) {
+        return;
+    }
 
-    const blob = new Blob([csvRows.join("\n")],{type:"text/csv"});
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "votos_feira.csv";
+    a.download = `votos_feira_${formatDate(new Date())}.csv`;
     a.click();
 }
 
-// ============ AVISO AO SAIR ==============
+// Evento do atalho Ctrl + D + S
+let ctrlDown = false;
+let dPressed = false;
+window.addEventListener('keydown', function(e) {
+    if (e.key === "Control") ctrlDown = true;
+    if (ctrlDown && e.key.toLowerCase() === 'd') {
+        dPressed = true;
+    }
+    if (ctrlDown && dPressed && e.key.toLowerCase() === 's') {
+        generateAndDownloadCSV();
+        ctrlDown = false;
+        dPressed = false;
+    }
+});
+window.addEventListener('keyup', function(e) {
+    if (e.key === "Control") ctrlDown = false;
+    if (e.key.toLowerCase() === 'd') dPressed = false;
+});
+
+// Gerar planilha ao tentar fechar a página
 window.addEventListener('beforeunload', function (e) {
+    generateAndDownloadCSV();
     e.preventDefault();
     e.returnValue = '';
 });
 
-// ========== Inicialização ==========
+// Inicialização
 updateChartAndTotals(formatDate(today));
+</script>
+</body>
+</html>
